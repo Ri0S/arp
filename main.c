@@ -31,7 +31,7 @@ struct route_info
     char ifName[IF_NAMESIZE];
 };
 
-int callback(const u_char *packet, u_char *t_mac);
+int callback(const u_char *packet, u_char *t_mac, char* t_ip);
 int getIPAddress(char *ip_addr,char *dev); //host ip,mac gateway ip 정보 구하는 함수는 구글링을 통해 얻었습니다.
 int getMacAddress(u_char *mac, char *dev);
 int getGatewayIP(char *gatewayip, socklen_t size);
@@ -105,7 +105,7 @@ int main(int argc, char **argv){
     while(1){
 
         packet = pcap_next(pcd, &hdr);
-        if(callback(packet, t_mac) == 1)
+        if(callback(packet, t_mac, t_ip) == 1)
             break;
     }
     printf("Source MAC Address: ");
@@ -136,7 +136,7 @@ int main(int argc, char **argv){
     }
     return 0;
 }
-int callback(const u_char *packet, u_char * t_mac){
+int callback(const u_char *packet, u_char * t_mac, char* t_ip){
     struct ether_header *etheh; // Ethernet 헤더 구조체
     unsigned short ether_type;
 
@@ -151,8 +151,12 @@ int callback(const u_char *packet, u_char * t_mac){
         arph = (struct ether_arp *)packet;
         packet += sizeof(struct ether_arp);
         if(arph->ea_hdr.ar_op = 2){
-            memcpy(t_mac, arph->arp_sha, 12);
-            return 1;
+            char tip[16];
+            inet_ntop(AF_INET, &arph->arp_spa, tip, sizeof(tip));
+            if(!strcmp(tip, t_ip)){
+                memcpy(t_mac, arph->arp_sha, 12);
+                return 1;
+            }
         }
     }
     return 0;
